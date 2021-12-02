@@ -6,9 +6,9 @@ services:
         # build: .
         command: start --mainnet-genesis-height=698502
         ports:
-          - "8545:8545"
+          # - "8545:8545"
           # Seed P2P listener
-          - "26661:26656"
+          # - "26661:26656"
           # - "26662:26657"
           # - "26663:26658"
           # - "26664:26659"
