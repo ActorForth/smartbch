@@ -5,7 +5,7 @@ services:
         image: actorforth/smartbch-mainnet:latest
         # build: .
         command: start --mainnet-genesis-height=698502
-        ports:
+        # ports:
           # - "8545:8545"
           # Seed P2P listener
           # - "26661:26656"
