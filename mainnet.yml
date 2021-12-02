@@ -6,15 +6,17 @@ services:
         # build: .
         command: start --mainnet-genesis-height=698502
         ports:
-          - "8545:8545"
-          - "26661:26656"
-          - "26662:26657"
-          - "26663:26658"
-          - "26664:26659"
-          - "26665:26660"
+          # - "8545:8545"
+          # Seed P2P listener
+          # - "26661:26656"
+          # - "26662:26657"
+          # - "26663:26658"
+          # - "26664:26659"
+          #  Prometheus metrics
+          # - "26665:26660"
         restart: always
         volumes:
-          - ./data/smartbch_node_data:/root/.smartbchd
+          -  /opt/chaindata/smartbchd:/root/.smartbchd
         logging:
           options:
             max-size: 10m
@@ -25,8 +27,8 @@ services:
     smartbch_healthcheck:
         image: ghcr.io/actorforth/smart_bch_healthcheck:b9ea365
         command: uvicorn --host 0.0.0.0 --port 4911 --workers 4 smartbch_healthcheck:app
-        ports:
-          - "4911:4911"
+        # ports:
+        #   - "4911:4911"
         environment:
           # example "https://0.0.0.0:8545" "https://smartbch.fountainhead.cash/mainnet"
           # make sure you include protocols in
