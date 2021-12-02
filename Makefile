@@ -1,21 +1,29 @@
-VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
-COMMIT := $(shell git log -1 --format='%H')
+export HOST_SRC_PATH=$(shell pwd)
 
-build_tags = cppbtree
 
-ldflags += -X github.com/smartbch/smartbch/app.GitCommit=$(COMMIT) \
-		  -X github.com/cosmos/cosmos-sdk/version.GitTag=$(VERSION)
+up:
+	cd components && docker-compose up -d smartbch_genesis
 
-BUILD_FLAGS := -tags "$(build_tags)" -ldflags '$(ldflags)'
+up-multi:
+	cd components && docker-compose up -d
 
-build: go.sum
-ifeq ($(OS), Windows_NT)
-	go build -mod=readonly $(BUILD_FLAGS) -o build/smartbchd.exe ./cmd/smartbchd
-else
-	go build -mod=readonly $(BUILD_FLAGS) -o build/smartbchd ./cmd/smartbchd
-endif
+up-main:
+	docker-compose -f mainnet.yml up -d
 
-build-linux: go.sum
-	GOOS=linux GOARCH=amd64 $(MAKE) build
+down:
+	cd components && docker-compose down
 
-.PHONY: all build build-linux
+clean:
+	bash clean.sh
+
+init-rebuild:
+	make down && make clean && mkdir data && docker-compose up --build --force-recreate
+
+init-mainnet:
+	make down && make clean && mkdir data && docker-compose build && docker-compose run --entrypoint "/usr/src/app/init-mainnet.sh" docker-compose-env 
+
+init-regtest:
+	make down && make clean && mkdir data && docker-compose up
+
+reset:
+	cd components && down up

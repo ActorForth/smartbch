@@ -1,13 +1,13 @@
-version: '3.8'
+version: "3.7"
 
 services:
-  smartbch:
-    build: .
-    command: start
-    ports:
-      - "8545:8545"
-    restart: always
+  docker-compose-env:
+    # build: .
+    image: ghcr.io/actorforth/docker-compose-env:v0.0.3
+    environment:
+      - HOST_SRC_PATH=${HOST_SRC_PATH}
     volumes:
-      - smartbch_data:/root/.smartbchd
-volumes:
-    smartbch_data:
+      - ./components:/var/tmp/
+      - ${HOST_SRC_PATH}/data/:/var/tmp/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOST_SRC_PATH}/mainnet-config:/var/tmp/mainnet-config

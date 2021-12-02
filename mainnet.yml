@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+    smartbch_node:
+        image: actorforth/smartbch-mainnet:latest
+        # build: .
+        command: start --mainnet-genesis-height=698502
+        ports:
+          - "8545:8545"
+          - "26661:26656"
+          - "26662:26657"
+          - "26663:26658"
+          - "26664:26659"
+          - "26665:26660"
+        restart: always
+        volumes:
+          - ./data/smartbch_node_data:/root/.smartbchd
+        logging:
+          options:
+            max-size: 10m
+            max-file: "10"
+        networks:
+          - bch-toolkit-network
+
+    smartbch_healthcheck:
+        image: ghcr.io/actorforth/smart_bch_healthcheck:b9ea365
+        command: uvicorn --host 0.0.0.0 --port 4911 --workers 4 smartbch_healthcheck:app
+        ports:
+          - "4911:4911"
+        environment:
+          # example "https://0.0.0.0:8545" "https://smartbch.fountainhead.cash/mainnet"
+          # make sure you include protocols in
+          ETH_RPC_HOST: "http://smartbch_node:8545"
+          # example "True" "False"
+          SSL_ENABLE: "True"
+          GOOD_KNOWN_ADDRESS: "0xBC785dB9e0701C829ba4C575Fa2caFa4c873699D"
+        restart: always
+        logging:
+          options:
+            max-size: 10m
+            max-file: "10"
+        networks:
+          - bch-toolkit-network
+
+networks:
+  bch-toolkit-network:
+    external: true
