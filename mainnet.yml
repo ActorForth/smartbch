@@ -20,7 +20,7 @@ services:
             max-size: 10m
             max-file: "10"
         networks:
-          - smartbch-network
+          - bch-toolkit-network
 
     smartbch_healthcheck:
         image: ghcr.io/actorforth/smart_bch_healthcheck:b9ea365
@@ -40,8 +40,8 @@ services:
             max-size: 10m
             max-file: "10"
         networks:
-          - smartbch-network
+          - bch-toolkit-network
 
 networks:
-  smartbch-network:
+  bch-toolkit-network:
     external: true
