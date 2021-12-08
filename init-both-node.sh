@@ -48,7 +48,6 @@ docker-compose -f /var/tmp/docker-compose.yml run smartbch_genesis add-genesis-v
 
 echo "Copy genesis.json"
 cp /var/tmp/data/smartbch_genesis_data/config/genesis.json .
-# mv ./test-keys.txt ./keys
 mv ./genesis_node_id.txt /var/tmp/data/keys/
 
 echo
