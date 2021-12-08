@@ -1,8 +1,8 @@
 #!/bin/bash
 
 echo "Generating wallet private keys"
-mkdir keys
-docker-compose -f /var/tmp/docker-compose.yml run smartbch_genesis gen-test-keys -n 10 > test-keys.txt
+mkdir /var/tmp/data/keys
+docker-compose -f /var/tmp/docker-compose.yml run smartbch_genesis gen-test-keys -n 10 > /var/tmp/data/keys/test-keys.txt
 echo
 
 echo "=============="
@@ -14,7 +14,7 @@ echo "=============="
 # there should be a better way to do this...
 docker-compose -f /var/tmp/docker-compose.yml run smartbch_genesis init mynode --chain-id 0x2711 \
     --init-balance=10000000000000000000 \
-    --test-keys=`paste -d, -s test-keys.txt` \
+    --test-keys=`paste -d, -s /var/tmp/data/keys/test-keys.txt` \
     --home=/root/.smartbchd --overwrite \
     2> json_node_id.txt
 
@@ -36,7 +36,7 @@ echo
 
 echo "Generate genesis validator"
 
-K1=$(head -1 test-keys.txt)
+K1=$(head -1 /var/tmp/data/keys/test-keys.txt)
 VAL=$(docker-compose -f /var/tmp/docker-compose.yml run smartbch_genesis generate-genesis-validator $K1 \
   --consensus-pubkey $CPK \
   --staking-coin 10000000000000000000000 \
@@ -48,8 +48,8 @@ docker-compose -f /var/tmp/docker-compose.yml run smartbch_genesis add-genesis-v
 
 echo "Copy genesis.json"
 cp /var/tmp/data/smartbch_genesis_data/config/genesis.json .
-mv ./test-keys.txt ./keys
-mv ./genesis_node_id.txt ./keys
+# mv ./test-keys.txt ./keys
+mv ./genesis_node_id.txt /var/tmp/data/keys/
 
 echo
 echo "Genesis node setup Finished!"
