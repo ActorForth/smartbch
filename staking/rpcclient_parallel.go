@@ -1,11 +1,10 @@
-package watcher
+package staking
 
 import (
 	"fmt"
 	"github.com/tendermint/tendermint/libs/log"
 
-	stakingtypes "github.com/smartbch/smartbch/staking/types"
-	"github.com/smartbch/smartbch/watcher/types"
+	"github.com/smartbch/smartbch/staking/types"
 )
 
 var _ types.RpcClient = (*ParallelRpcClient)(nil)
@@ -37,7 +36,7 @@ func (c *ParallelRpcClient) GetLatestHeight() int64 {
 	return c.latestHeight
 }
 
-func (c *ParallelRpcClient) GetEpochs(start, end uint64) []*stakingtypes.Epoch {
+func (c *ParallelRpcClient) GetEpochs(start, end uint64) []*types.Epoch {
 	return c.client.GetEpochs(start, end)
 }
 

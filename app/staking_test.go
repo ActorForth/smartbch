@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartbch/smartbch/internal/bigutils"
 	"github.com/smartbch/smartbch/internal/testutils"
 	"github.com/smartbch/smartbch/staking"
 	"github.com/smartbch/smartbch/staking/types"
@@ -32,8 +33,8 @@ func TestStaking(t *testing.T) {
 		staking.InitialStakingAmount = _init
 		staking.MinimumStakingAmount = _min
 	}()
-	staking.InitialStakingAmount = uint256.NewInt(1)
-	staking.MinimumStakingAmount = uint256.NewInt(0)
+	staking.InitialStakingAmount = uint256.NewInt().SetUint64(1)
+	staking.MinimumStakingAmount = uint256.NewInt().SetUint64(0)
 
 	//test create validator through deliver tx
 	ctx := _app.GetRunTxContext()
@@ -51,7 +52,7 @@ func TestStaking(t *testing.T) {
 	require.Equal(t, 2, len(info.Validators))
 	require.True(t, bytes.Equal(addr1[:], info.Validators[1].Address[:]))
 	require.Equal(t, [32]byte{'1'}, info.Validators[1].Pubkey)
-	require.Equal(t, uint64(100), uint256.NewInt(0).SetBytes(info.Validators[1].StakedCoins[:]).Uint64())
+	require.Equal(t, uint64(100), uint256.NewInt().SetBytes(info.Validators[1].StakedCoins[:]).Uint64())
 
 	//test edit validator
 	dataEncode = staking.PackEditValidator([20]byte{'b'}, [32]byte{'2'})
@@ -159,7 +160,7 @@ func TestCreateValidator(t *testing.T) {
 
 	_initAmt := staking.InitialStakingAmount
 	defer func() { staking.InitialStakingAmount = _initAmt }()
-	staking.InitialStakingAmount = uint256.NewInt(2000)
+	staking.InitialStakingAmount = uint256.NewInt().SetUint64(2000)
 
 	data := make([]byte, 90)
 	copy(data, staking.SelectorCreateValidator[:])
@@ -202,7 +203,7 @@ func TestEditValidator(t *testing.T) {
 
 	_initAmt := staking.InitialStakingAmount
 	defer func() { staking.InitialStakingAmount = _initAmt }()
-	staking.InitialStakingAmount = uint256.NewInt(2000)
+	staking.InitialStakingAmount = uint256.NewInt().SetUint64(2000)
 
 	data := make([]byte, 60)
 	copy(data, staking.SelectorEditValidator[:])
@@ -238,7 +239,7 @@ func TestRetireValidator(t *testing.T) {
 
 	_initAmt := staking.InitialStakingAmount
 	defer func() { staking.InitialStakingAmount = _initAmt }()
-	staking.InitialStakingAmount = uint256.NewInt(2000)
+	staking.InitialStakingAmount = uint256.NewInt().SetUint64(2000)
 
 	data := staking.PackRetire()
 	tx, _ := _app.MakeAndExecTxInBlock(key1, staking.StakingContractAddress, 123, data)
@@ -278,8 +279,8 @@ func TestUpdateMinGasPrice(t *testing.T) {
 //	defer _app.Destroy()
 //
 //	//config test param
-//	staking.InitialStakingAmount = uint256.NewInt(1)
-//	staking.MinimumStakingAmount = uint256.NewInt(0)
+//	staking.InitialStakingAmount = uint256.NewInt().SetUint64(1)
+//	staking.MinimumStakingAmount = uint256.NewInt().SetUint64(0)
 //
 //	dataEncode := staking.PackCreateValidator(addr1, [32]byte{'a'}, [32]byte{'1'})
 //	_app.MakeAndExecTxInBlockWithGasPrice(key1,
@@ -364,8 +365,8 @@ func TestSumVotingPower(t *testing.T) {
 		staking.InitialStakingAmount = _initAmt
 		staking.MinimumStakingAmount = _minAmt
 	}()
-	staking.InitialStakingAmount = uint256.NewInt(2000)
-	staking.MinimumStakingAmount = uint256.NewInt(2000)
+	staking.InitialStakingAmount = uint256.NewInt().SetUint64(2000)
+	staking.MinimumStakingAmount = uint256.NewInt().SetUint64(2000)
 
 	key1, addr1 := testutils.GenKeyAndAddr()
 	key2, addr2 := testutils.GenKeyAndAddr()
@@ -474,8 +475,8 @@ func TestStakingDetermination(t *testing.T) {
 		staking.InitialStakingAmount = _initAmt
 		staking.MinimumStakingAmount = _minAmt
 	}()
-	staking.InitialStakingAmount = uint256.NewInt(2000)
-	staking.MinimumStakingAmount = uint256.NewInt(2000)
+	staking.InitialStakingAmount = uint256.NewInt().SetUint64(2000)
+	staking.MinimumStakingAmount = uint256.NewInt().SetUint64(2000)
 
 	valPubKey := ed25519.GenPrivKey().PubKey()
 	key1, addr1 := testutils.GenKeyAndAddr()
@@ -486,11 +487,8 @@ func TestStakingDetermination(t *testing.T) {
 	var stateRoot []byte
 	for i := 0; i < 5; i++ {
 		//println("----------")
-		_app := testutils.CreateTestAppWithArgs(testutils.TestAppInitArgs{
-			StartTime: &startTime,
-			ValPubKey: &valPubKey,
-			PrivKeys:  []string{key1, key2, key3},
-		})
+		_app := testutils.CreateTestApp0(startTime, valPubKey,
+			bigutils.NewU256(testutils.DefaultInitBalance), key1, key2, key3)
 
 		var pubKey0 [32]byte
 		copy(pubKey0[:], _app.TestPubkey.Bytes())

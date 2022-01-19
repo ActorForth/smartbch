@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/libs/log"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/tendermint/tendermint/libs/log"
-
-	"github.com/smartbch/smartbch/watcher"
+	"github.com/smartbch/smartbch/staking"
 )
 
 // To summmarize all the op_return vouts since the first SLP transaction:
@@ -37,12 +36,12 @@ func main() {
 		panic(err)
 	}
 
-	client := watcher.NewRpcClient(rpcURL, rpcUsername, rpcPassword, "text/plain;", log.NewNopLogger())
+	client := staking.NewRpcClient(rpcURL, rpcUsername, rpcPassword, "text/plain;", log.NewNopLogger())
 	printAllOpReturn(client, startH, endH)
 	//client.PrintAllOpReturn(519995, 679995)
 }
 
-func printAllOpReturn(client *watcher.RpcClient, startHeight, endHeight int64) {
+func printAllOpReturn(client *staking.RpcClient, startHeight, endHeight int64) {
 	for h := startHeight; h < endHeight; h++ {
 		fmt.Printf("Height: %d\n", h)
 		hash, err := client.GetBlockHash(h)

@@ -13,7 +13,6 @@ import (
 
 	"github.com/smartbch/moeingevm/ebp"
 	"github.com/smartbch/moeingevm/types"
-	"github.com/smartbch/smartbch/app"
 	"github.com/smartbch/smartbch/internal/bigutils"
 	"github.com/smartbch/smartbch/internal/ethutils"
 	"github.com/smartbch/smartbch/param"
@@ -70,7 +69,7 @@ func createGethTxFromSendTxArgs(args rpctypes.SendTxArgs) (*gethtypes.Transactio
 	return tx, nil
 }
 
-func blockToRpcResp(block *types.Block, txs []*types.Transaction, sigs [][65]byte) map[string]interface{} {
+func blockToRpcResp(block *types.Block, txs []*types.Transaction) map[string]interface{} {
 	result := map[string]interface{}{
 		"number":           hexutil.Uint64(block.Number),
 		"hash":             hexutil.Bytes(block.Hash[:]),
@@ -97,7 +96,7 @@ func blockToRpcResp(block *types.Block, txs []*types.Transaction, sigs [][65]byt
 	if len(txs) > 0 {
 		rpcTxs := make([]*rpctypes.Transaction, len(txs))
 		for i, tx := range txs {
-			rpcTxs[i] = txToRpcResp(tx, sigs[i])
+			rpcTxs[i] = txToRpcResp(tx)
 		}
 		result["transactions"] = rpcTxs
 	}
@@ -105,16 +104,15 @@ func blockToRpcResp(block *types.Block, txs []*types.Transaction, sigs [][65]byt
 	return result
 }
 
-func txsToRpcResp(txs []*types.Transaction, sigs [][65]byte) []*rpctypes.Transaction {
+func txsToRpcResp(txs []*types.Transaction) []*rpctypes.Transaction {
 	rpcTxs := make([]*rpctypes.Transaction, len(txs))
 	for i, tx := range txs {
-		rpcTxs[i] = txToRpcResp(tx, sigs[i])
+		rpcTxs[i] = txToRpcResp(tx)
 	}
 	return rpcTxs
 }
 
-func txToRpcResp(tx *types.Transaction, rawSig [65]byte) *rpctypes.Transaction {
-	v, r, s := app.DecodeVRS(rawSig)
+func txToRpcResp(tx *types.Transaction) *rpctypes.Transaction {
 	idx := hexutil.Uint64(tx.TransactionIndex)
 	resp := &rpctypes.Transaction{
 		BlockHash:        &gethcmn.Hash{},
@@ -127,9 +125,9 @@ func txToRpcResp(tx *types.Transaction, rawSig [65]byte) *rpctypes.Transaction {
 		Nonce:            hexutil.Uint64(tx.Nonce),
 		TransactionIndex: &idx,
 		Value:            (*hexutil.Big)(bigutils.U256FromSlice32(tx.Value[:]).ToBig()),
-		V:                (*hexutil.Big)(v),
-		R:                (*hexutil.Big)(r),
-		S:                (*hexutil.Big)(s),
+		//V:
+		//R:
+		//S:
 	}
 	copy(resp.BlockHash[:], tx.BlockHash[:])
 	if !isZeroAddress(tx.To) {

@@ -59,43 +59,15 @@ type TestApp struct {
 	initAllBalance *uint256.Int
 }
 
-type TestAppInitArgs struct {
-	StartHeight *int64
-	StartTime   *time.Time
-	ValPubKey   *crypto.PubKey
-	InitAmt     *uint256.Int
-	PrivKeys    []string
-}
-
 func CreateTestApp(keys ...string) *TestApp {
-	return createTestApp0(0, time.Now(), ed25519.GenPrivKey().PubKey(), bigutils.NewU256(DefaultInitBalance), keys...)
+	return CreateTestApp0(time.Now(), ed25519.GenPrivKey().PubKey(), bigutils.NewU256(DefaultInitBalance), keys...)
 }
 
-func CreateTestAppWithArgs(args TestAppInitArgs) *TestApp {
-	startHeight := int64(0)
-	if args.StartHeight != nil {
-		startHeight = *args.StartHeight
-	}
-
-	startTime := time.Now()
-	if args.StartTime != nil {
-		startTime = *args.StartTime
-	}
-
-	pubKey := ed25519.GenPrivKey().PubKey()
-	if args.ValPubKey != nil {
-		pubKey = *args.ValPubKey
-	}
-
-	initAmt := bigutils.NewU256(DefaultInitBalance)
-	if args.InitAmt != nil {
-		initAmt = args.InitAmt
-	}
-
-	return createTestApp0(startHeight, startTime, pubKey, initAmt, args.PrivKeys...)
+func CreateTestAppWithInitAmt(initAmt *uint256.Int, keys ...string) *TestApp {
+	return CreateTestApp0(time.Now(), ed25519.GenPrivKey().PubKey(), initAmt, keys...)
 }
 
-func createTestApp0(startHeight int64, startTime time.Time, valPubKey crypto.PubKey, initAmt *uint256.Int, keys ...string) *TestApp {
+func CreateTestApp0(startTime time.Time, valPubKey crypto.PubKey, initAmt *uint256.Int, keys ...string) *TestApp {
 	err := os.RemoveAll(testAdsDir)
 	if err != nil {
 		panic("remove test ads failed " + err.Error())
@@ -127,26 +99,18 @@ func createTestApp0(startHeight int64, startTime time.Time, valPubKey crypto.Pub
 	//reset config for test
 	staking.DefaultMinGasPrice = 0
 	staking.MinGasPriceLowerBound = 0
-	//setMinGasPrice(_app, 0)
 
 	_app.InitChain(abci.RequestInitChain{AppStateBytes: appStateBytes})
 	_app.BeginBlock(abci.RequestBeginBlock{Header: tmproto.Header{
-		Height:          startHeight,
 		Time:            startTime,
 		ProposerAddress: valPubKey.Address(),
 	}})
-	_app.EndBlock(abci.RequestEndBlock{
-		Height: startHeight,
-	})
-	if startHeight > 1 {
-		_app.AddBlockFotTest(&modbtypes.Block{Height: startHeight - 1})
-	}
 	stateRoot := _app.Commit().Data
 	if debug {
 		fmt.Println("h: 0 StateRoot:", hex.EncodeToString(stateRoot))
 	}
 
-	allBalance := uint256.NewInt(0)
+	allBalance := uint256.NewInt()
 	if checkAllBalance {
 		allBalance = _app.SumAllBalance()
 	}
@@ -165,7 +129,7 @@ func (_app *TestApp) ReloadApp() *TestApp {
 	params.AppConfig.AppDataPath = testAdsDir
 	params.AppConfig.ModbDataPath = testMoDbDir
 	newApp := app.NewApp(params, bigutils.NewU256(1), 0, nopLogger, true)
-	allBalance := uint256.NewInt(0)
+	allBalance := uint256.NewInt()
 	if checkAllBalance {
 		allBalance = _app.SumAllBalance()
 	}
@@ -182,7 +146,7 @@ func (_app *TestApp) DestroyWithoutCheck() {
 }
 
 func (_app *TestApp) Destroy() {
-	allBalance := uint256.NewInt(0)
+	allBalance := uint256.NewInt()
 	if checkAllBalance {
 		allBalance = _app.App.SumAllBalance()
 	}
@@ -210,31 +174,11 @@ func (_app *TestApp) WaitMS(n int64) {
 	time.Sleep(time.Duration(n) * time.Millisecond)
 }
 
-func (_app *TestApp) SetMinGasPrice(gp uint64) {
-	setMinGasPrice(_app.App, gp)
-	_app.ExecTxsInBlock()
-}
-func setMinGasPrice(_app *app.App, gp uint64) {
-	ctx := _app.GetRunTxContext()
-	staking.SaveMinGasPrice(ctx, gp, true)
-	staking.SaveMinGasPrice(ctx, gp, false)
-	ctx.Close(true)
-}
-
 func (_app *TestApp) GetMinGasPrice(isLast bool) uint64 {
 	ctx := _app.GetRpcContext()
 	defer ctx.Close(false)
 
 	return staking.LoadMinGasPrice(ctx, isLast)
-}
-
-func (_app *TestApp) GetSeq(addr gethcmn.Address) uint64 {
-	ctx := _app.GetRpcContext()
-	defer ctx.Close(false)
-	if acc := ctx.GetAccount(addr); acc != nil {
-		return acc.Sequence()
-	}
-	return 0
 }
 
 func (_app *TestApp) GetNonce(addr gethcmn.Address) uint64 {
@@ -337,16 +281,16 @@ func (_app *TestApp) GetTestPubkey() crypto.PubKey {
 func (_app *TestApp) StoreBlocks(blocks ...*modbtypes.Block) {
 	ctx := _app.GetRunTxContext()
 	for _, block := range blocks {
-		ctx.StoreBlock(block, nil)
+		ctx.StoreBlock(block)
 	}
-	ctx.StoreBlock(nil, nil) // flush previous block
+	ctx.StoreBlock(nil) // flush previous block
 	ctx.Close(true)
 }
 func (_app *TestApp) AddBlocksToHistory(blocks ...*modbtypes.Block) {
 	for _, blk := range blocks {
-		_app.HistoryStore().AddBlock(blk, -1, nil)
+		_app.HistoryStore().AddBlock(blk, -1)
 	}
-	_app.HistoryStore().AddBlock(nil, -1, nil)
+	_app.HistoryStore().AddBlock(nil, -1)
 	_app.WaitMS(10)
 }
 
@@ -356,21 +300,8 @@ func (_app *TestApp) MakeAndSignTx(hexPrivKey string,
 	return _app.MakeAndSignTxWithGas(hexPrivKey, toAddr, val, data, DefaultGasLimit, DefaultGasPrice)
 }
 
-func (_app *TestApp) MakeAndSignTxWithNonce(hexPrivKey string,
-	toAddr *gethcmn.Address, val int64, data []byte, nonce int64) (*gethtypes.Transaction, gethcmn.Address) {
-
-	return _app.MakeAndSignTxWithAllArgs(hexPrivKey, toAddr, val, data, DefaultGasLimit, DefaultGasPrice, nonce)
-}
-
 func (_app *TestApp) MakeAndSignTxWithGas(hexPrivKey string,
 	toAddr *gethcmn.Address, val int64, data []byte, gasLimit uint64, gasPrice int64) (*gethtypes.Transaction, gethcmn.Address) {
-
-	return _app.MakeAndSignTxWithAllArgs(hexPrivKey, toAddr, val, data, gasLimit, gasPrice, -1)
-}
-
-func (_app *TestApp) MakeAndSignTxWithAllArgs(hexPrivKey string,
-	toAddr *gethcmn.Address, val int64, data []byte, gasLimit uint64, gasPrice int64,
-	nonce int64) (*gethtypes.Transaction, gethcmn.Address) {
 
 	privKey, _, err := ethutils.HexToPrivKey(hexPrivKey)
 	if err != nil {
@@ -378,14 +309,11 @@ func (_app *TestApp) MakeAndSignTxWithAllArgs(hexPrivKey string,
 	}
 
 	addr := ethutils.PrivKeyToAddr(privKey)
-	nonceU64 := uint64(nonce)
-	if nonce < 0 {
-		nonceU64 = _app.GetNonce(addr)
-	}
-
+	nonce := _app.GetNonce(addr)
 	chainID := _app.ChainID().ToBig()
+
 	txData := &gethtypes.LegacyTx{
-		Nonce:    nonceU64,
+		Nonce:    nonce,
 		GasPrice: big.NewInt(gasPrice),
 		Gas:      gasLimit,
 		To:       toAddr,
@@ -399,18 +327,6 @@ func (_app *TestApp) MakeAndSignTxWithAllArgs(hexPrivKey string,
 	}
 
 	return tx, addr
-}
-
-func (_app *TestApp) CallWithABI(sender, contractAddr gethcmn.Address,
-	abi ethutils.ABIWrapper, methodName string, args ...interface{}) []interface{} {
-
-	data := abi.MustPack(methodName, args...)
-	statusCode, statusStr, output := _app.Call(sender, contractAddr, data)
-	if statusCode != 0 {
-		panic(statusStr)
-	}
-
-	return abi.MustUnpack(methodName, output)
 }
 
 func (_app *TestApp) Call(sender, contractAddr gethcmn.Address, data []byte) (int, string, []byte) {
@@ -459,7 +375,7 @@ func (_app *TestApp) ExecTxsInBlock(txs ...*gethtypes.Transaction) int64 {
 
 func (_app *TestApp) AddTxsInBlock(height int64, txs ...*gethtypes.Transaction) int64 {
 	_app.BeginBlock(abci.RequestBeginBlock{
-		Hash: uint256.NewInt(uint64(height)).PaddedBytes(32),
+		Hash: uint256.NewInt().SetUint64(uint64(height)).PaddedBytes(32),
 		Header: tmproto.Header{
 			Height:          height,
 			Time:            _app.StartTime.Add(BlockInterval * time.Duration(height)),
@@ -481,7 +397,7 @@ func (_app *TestApp) AddTxsInBlock(height int64, txs ...*gethtypes.Transaction) 
 }
 func (_app *TestApp) WaitNextBlock(currHeight int64) {
 	_app.BeginBlock(abci.RequestBeginBlock{
-		Hash: uint256.NewInt(uint64(currHeight + 1)).PaddedBytes(32),
+		Hash: uint256.NewInt().SetUint64(uint64(currHeight + 1)).PaddedBytes(32),
 		Header: tmproto.Header{
 			Height: currHeight + 1,
 			Time:   _app.StartTime.Add(BlockInterval * time.Duration(currHeight+1)),
@@ -525,21 +441,16 @@ func (_app *TestApp) EnsureTxFailedWithOutData(hash gethcmn.Hash, statusStr, out
 }
 
 func (_app *TestApp) CheckNewTxABCI(tx *gethtypes.Transaction) uint32 {
-	code, _ := _app.CheckTxABCI(tx, true)
-	return code
-}
-func (_app *TestApp) RecheckTxABCI(tx *gethtypes.Transaction) uint32 {
-	code, _ := _app.CheckTxABCI(tx, false)
-	return code
-}
-func (_app *TestApp) CheckTxABCI(tx *gethtypes.Transaction, newTx bool) (uint32, string) {
-	txCheckType := abci.CheckTxType_New
-	if !newTx {
-		txCheckType = abci.CheckTxType_Recheck
-	}
 	res := _app.CheckTx(abci.RequestCheckTx{
 		Tx:   MustEncodeTx(tx),
-		Type: txCheckType,
+		Type: abci.CheckTxType_New,
 	})
-	return res.Code, res.Info
+	return res.Code
+}
+func (_app *TestApp) RecheckTxABCI(tx *gethtypes.Transaction) uint32 {
+	res := _app.CheckTx(abci.RequestCheckTx{
+		Tx:   MustEncodeTx(tx),
+		Type: abci.CheckTxType_Recheck,
+	})
+	return res.Code
 }
